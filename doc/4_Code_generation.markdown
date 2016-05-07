@@ -2,23 +2,34 @@ Code generation
 ===============
 
 It is also possible to generate code using the parser, by first creating an Abstract Syntax Tree and then using the
-pretty printer to convert it to PHP code. To simplify code generation, the project comes with a set of builders for
-namespaces, classes, interfaces, traits, methods, functions, parameters and properties. The builders allow creating node
-trees using a fluid interface, instead of instantiating all nodes manually.
+pretty printer to convert it to PHP code. To simplify code generation, the project comes with builders which allow
+creating node trees using a fluid interface, instead of instantiating all nodes manually. Builders are available for
+the following syntactic elements:
+
+ * namespaces and use statements
+ * classes, interfaces and traits
+ * methods, functions and parameters
+ * properties
 
 Here is an example:
 
 ```php
-<?php
-$factory = new PhpParser\BuilderFactory;
+use PhpParser\BuilderFactory;
+use PhpParser\PrettyPrinter;
+use PhpParser\Node;
+
+$factory = new BuilderFactory;
 $node = $factory->namespace('Name\Space')
+    ->addStmt($factory->use('Some\Other\Thingy')->as('SomeOtherClass'))
     ->addStmt($factory->class('SomeClass')
         ->extend('SomeOtherClass')
         ->implement('A\Few', '\Interfaces')
         ->makeAbstract() // ->makeFinal()
 
         ->addStmt($factory->method('someMethod')
+            ->makePublic()
             ->makeAbstract() // ->makeFinal()
+            ->setReturnType('bool')
             ->addParam($factory->param('someParam')->setTypeHint('SomeClass'))
             ->setDocComment('/**
                               * This method does something.
@@ -31,7 +42,7 @@ $node = $factory->namespace('Name\Space')
             ->makeProtected() // ->makePublic() [default], ->makePrivate()
             ->addParam($factory->param('someParam')->setDefault('test'))
             // it is possible to add manually created nodes
-            ->addStmt(new PhpParser\Node\Expr\Print_(new PhpParser\Node\Expr\Variable('someParam')))
+            ->addStmt(new Node\Expr\Print_(new Node\Expr\Variable('someParam')))
         )
 
         // properties will be correctly reordered above the methods
@@ -43,7 +54,7 @@ $node = $factory->namespace('Name\Space')
 ;
 
 $stmts = array($node);
-$prettyPrinter = new PhpParser\PrettyPrinter\Standard();
+$prettyPrinter = new PrettyPrinter\Standard();
 echo $prettyPrinter->prettyPrintFile($stmts);
 ```
 
@@ -54,6 +65,7 @@ This will produce the following output with the standard pretty printer:
 
 namespace Name\Space;
 
+use Some\Other\Thingy as SomeClass;
 abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
 {
     protected $someProperty;
@@ -63,7 +75,7 @@ abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
      *
      * @param SomeClass And takes a parameter
      */
-    public abstract function someMethod(SomeClass $someParam);
+    public abstract function someMethod(SomeClass $someParam) : bool;
     protected function anotherMethod($someParam = 'test')
     {
         print $someParam;

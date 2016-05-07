@@ -10,10 +10,18 @@ class NodeTraverser implements NodeTraverserInterface
     protected $visitors;
 
     /**
-     * Constructs a node traverser.
+     * @var bool
      */
-    public function __construct() {
+    private $cloneNodes;
+
+    /**
+     * Constructs a node traverser.
+     *
+     * @param bool $cloneNodes Should the traverser clone the nodes when traversing the AST
+     */
+    public function __construct($cloneNodes = false) {
         $this->visitors = array();
+        $this->cloneNodes = $cloneNodes;
     }
 
     /**
@@ -65,7 +73,9 @@ class NodeTraverser implements NodeTraverserInterface
     }
 
     protected function traverseNode(Node $node) {
-        $node = clone $node;
+        if ($this->cloneNodes) {
+            $node = clone $node;
+        }
 
         foreach ($node->getSubNodeNames() as $name) {
             $subNode =& $node->$name;
@@ -89,6 +99,12 @@ class NodeTraverser implements NodeTraverserInterface
 
                 foreach ($this->visitors as $visitor) {
                     if (null !== $return = $visitor->leaveNode($subNode)) {
+                        if (is_array($return)) {
+                            throw new \LogicException(
+                                'leaveNode() may only return an array ' .
+                                'if the parent structure is an array'
+                            );
+                        }
                         $subNode = $return;
                     }
                 }
